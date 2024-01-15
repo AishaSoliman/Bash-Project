@@ -1,0 +1,17 @@
+Sara takes: 
+  1) create database 
+  2) list database
+  3) in connect database
+      1) create table 
+      2) insert table 
+      3) delete the data table
+
+
+
+Aisha takes:
+1) drop database
+2) in connect 
+      1) drop table
+      2) select table
+      3) update
+
