@@ -195,7 +195,7 @@ while true; do
                                             for idx in $(seq 1 $((array_size - 1)))
                                             do 
                                                 while true; do
-                                                    read -p "Enter the value of $metaDataArr[$idx]: " value_in_insert
+                                                    read -p "Enter the value of ${metaDataArr[$idx]}: " value_in_insert
                                                     echo "value_in_insert : $value_in_insert"
                                                     
                                                     if [ "${dataTypeArr[$idx]}" == "int" ]; then
@@ -253,17 +253,17 @@ while true; do
                                             1 ) echo "=============================Select All============================="
                         
                                                 read -p "Enter the name of file : " tellTableName
-                                                cat "$pwd/.db/$name/$tableName/$tellTableName" | tail -n +3 
+                                                cat "$PWD/$tellTableName" | tail -n +3 
                                                 echo "Select All DONE!"
                                             ;;
                                             2 ) echo "=============================Select Specific Column============================="
                                                 read -p "Enter the name of file : " tellTableName
                                                 echo "select specific column"
                                                 read -p "Enter the column name of file : " columnName
-                                                col_index=$(head -n 1 "$pwd/.db/$name/$tableName/$tellTableName"| tr ':' '\n' | grep -n "^$columnName$" | cut -d':' -f1)
+                                                col_index=$(head -n 1 "$PWD/$tellTableName"| tr ':' '\n' | grep -n "^$columnName$" | cut -d':' -f1)
                                                 if [ -n "$col_index" ]; then
                                                     # Skip the first two lines and then extract the specified column
-                                                    tail -n +3 "$pwd/.db/$name/$tableName/$tellTableName" | cut -d ':' -f "$col_index"
+                                                    tail -n +3 "$PWD/$tellTableName" | cut -d ':' -f "$col_index"
                                                 else
                                                     echo "Column '$columnName' not found in file '$tellTableName'"
                                                 fi 
@@ -408,158 +408,162 @@ while true; do
 
                                         # Construct the file path
                                         file_path="$PWD/$tellTableName"
-                                        echo "WARNING: you can't update the PK itself which is the first column!"
-                                        read -p "Enter the value for the first column (PK): " pk
+                                        if [ -e "$file_path" ]; then
+                                            echo "WARNING: you can't update the PK itself which is the first column!"
+                                            read -p "Enter the value for the first column (PK): " pk
 
-                                        record_found=false # a flag to check if the record with PK is found
+                                            record_found=false # a flag to check if the record with PK is found
 
-                                        # Select the record which the PK points to
-                                        selected_record=$(awk -F':' -v column=1 -v value="$pk" '
-                                            NR > 2 {
-                                                if ($column == value) {
-                                                    print;
-                                                    exit;
+                                            # Select the record which the PK points to
+                                            selected_record=$(awk -F':' -v column=1 -v value="$pk" '
+                                                NR > 2 {
+                                                    if ($column == value) {
+                                                        print;
+                                                        exit;
+                                                    }
                                                 }
-                                            }
-                                        ' "$file_path")
+                                            ' "$file_path")
 
-                                        if [ -n "$selected_record" ]; then
-                                            record_found=true
-                                            echo "Record details for the PK $pk:"
-                                            echo "$selected_record"
+                                            if [ -n "$selected_record" ]; then
+                                                record_found=true
+                                                echo "Record details for the PK $pk:"
+                                                echo "$selected_record"
 
-                                            read -p "Enter the column name you want to update: " columnNameU
+                                                read -p "Enter the column name you want to update: " columnNameU
 
-                                            IFS=':' read -r -a dataTypeArrU < <(awk -F':' 'NR==2 {print}' "$file_path")
-                                            IFS=':' read -r -a metaDataArrU < <(head -n 1 "$file_path")
+                                                IFS=':' read -r -a dataTypeArrU < <(awk -F':' 'NR==2 {print}' "$file_path")
+                                                IFS=':' read -r -a metaDataArrU < <(head -n 1 "$file_path")
 
-                                            if [[ " ${metaDataArrU[@]} " =~ " $columnNameU " ]]; then
-                                                read -p "Enter the new value for $columnNameU: " valueU
+                                                if [[ " ${metaDataArrU[@]} " =~ " $columnNameU " ]]; then
+                                                    read -p "Enter the new value for $columnNameU: " valueU
 
-                                                # Check if the column name is valid
-                                                col_index_for_update=$(awk -F':' -v col="$columnNameU" 'NR==1 {for (i=1; i<=NF; i++) if ($i == col) print i}' "$file_path")
-                                                if [ -n "$col_index_for_update" ]; then
-                                                    data_type="${dataTypeArrU[col_index_for_update-1]}"
-                                                    # Loop until the user enters the correct data type
-                                                    while true; do
-                                                        # Validate the input based on the data type
-                                                        if [ "$data_type" == "int" ]; then
-                                                            if is_integer "$valueU"; then
-                                                                break
-                                                            else
-                                                                echo "Error: Invalid input. $columnNameU must be an integer."
+                                                    # Check if the column name is valid
+                                                    col_index_for_update=$(awk -F':' -v col="$columnNameU" 'NR==1 {for (i=1; i<=NF; i++) if ($i == col) print i}' "$file_path")
+                                                    if [ -n "$col_index_for_update" ]; then
+                                                        data_type="${dataTypeArrU[col_index_for_update-1]}"
+                                                        # Loop until the user enters the correct data type
+                                                        while true; do
+                                                            # Validate the input based on the data type
+                                                            if [ "$data_type" == "int" ]; then
+                                                                if is_integer "$valueU"; then
+                                                                    break
+                                                                else
+                                                                    echo "Error: Invalid input. $columnNameU must be an integer."
+                                                                fi
+                                                            elif [ "$data_type" == "string" ]; then
+                                                                if is_string "$valueU"; then
+                                                                    break
+                                                                else
+                                                                    echo "Error: Invalid input. $columnNameU must be a string."
+                                                                fi
                                                             fi
-                                                        elif [ "$data_type" == "string" ]; then
-                                                            if is_string "$valueU"; then
-                                                                break
-                                                            else
-                                                                echo "Error: Invalid input. $columnNameU must be a string."
-                                                            fi
-                                                        fi
 
-                                                        # Ask the user to re-enter the value
-                                                        read -p "Re-enter the value for $columnNameU: " valueU
-                                                    done
+                                                            # Ask the user to re-enter the value
+                                                            read -p "Re-enter the value for $columnNameU: " valueU
+                                                        done
 
-                                                    # Update the file
-                                                    awk -v pk="$pk" -v pos="$col_index_for_update" -v val="$valueU" -F: 'BEGIN{OFS=":"} {if ($1==pk) $pos=val; print}' "$file_path" > "$file_path.tmp" && mv "$file_path.tmp" "$file_path"
+                                                        # Update the file
+                                                        awk -v pk="$pk" -v pos="$col_index_for_update" -v val="$valueU" -F: 'BEGIN{OFS=":"} {if ($1==pk) $pos=val; print}' "$file_path" > "$file_path.tmp" && mv "$file_path.tmp" "$file_path"
 
-                                                    echo "Data updated successfully."
-                                                    cat "$file_path"
+                                                        echo "Data updated successfully."
+                                                        cat "$file_path"
+                                                    else
+                                                        echo "Error: Column name $columnNameU not found."
+                                                    fi
                                                 else
-                                                    echo "Error: Column name $columnNameU not found."
+                                                    echo "Error: Column name $columnNameU does not exist in the file."
                                                 fi
                                             else
-                                                echo "Error: Column name $columnNameU does not exist in the file."
+                                                echo "Record with PK $pk not found."
+                                                # Give the user the choice to re-enter the PK or go back to the main menu
+                                                while true; do
+                                                    read -p "Do you want to (1) re-enter the PK or (2) go back to the main menu? Enter 1 or 2: " choice
+                                                    case $choice in
+                                                        1)
+                                                            read -p "Re-enter the value for the first column (PK): " pk
+                                                            selected_record=$(awk -F':' -v column=1 -v value="$pk" '
+                                                                NR > 2 {
+                                                                    if ($column == value) {
+                                                                        print;
+                                                                        exit;
+                                                                    }
+                                                                }
+                                                            ' "$file_path")
+
+                                                            if [ -n "$selected_record" ]; then
+                                                                record_found=true
+                                                                echo "Record details for the PK $pk:"
+                                                                echo "$selected_record"
+
+                                                                read -p "Enter the column name you want to update: " columnNameU
+
+                                                                IFS=':' read -r -a dataTypeArrU < <(awk -F':' 'NR==2 {print}' "$file_path")
+                                                                IFS=':' read -r -a metaDataArrU < <(head -n 1 "$file_path")
+
+                                                                if [[ " ${metaDataArrU[@]} " =~ " $columnNameU " ]]; then
+                                                                    
+                                                                    read -p "Enter the new value for $columnNameU: " valueU
+                                                                    # echo "Column name $columnNameU found in the header."
+                                                                    # Get the data type for the column
+                                                                    col_index_for_update=$(awk -F':' -v col="$columnNameU" 'NR==1 {for (i=1; i<=NF; i++) if ($i == col) print i}' "$file_path")
+                                                                    echo "col_index_for_update: $col_index_for_update"
+                                                                    # Check if the column name is valid
+                                                                    if [ -n "$col_index_for_update" ]; then
+                                                                        data_type="${dataTypeArrU[col_index_for_update-1]}"
+                                                                        # echo "dataTypeArrU: ${dataTypeArrU[@]}"
+                                                                        # echo "data_type: $data_type"
+                                                                        # echo "col_index_for_update: $col_index_for_update"
+                                                                        # Loop until the user enters the correct data type
+                                                                        while true; do
+                                                                            # Validate the input based on the data type
+                                                                            if [ "$data_type" == "int" ]; then
+                                                                                if is_integer "$valueU"; then
+                                                                                    break
+                                                                                else
+                                                                                    echo "Error: Invalid input. $columnNameU must be an integer."
+                                                                                fi
+                                                                            elif [ "$data_type" == "string" ]; then
+                                                                                if is_string "$valueU"; then
+                                                                                    break
+                                                                                else
+                                                                                    echo "Error: Invalid input. $columnNameU must be a string."
+                                                                                fi
+                                                                            fi
+
+                                                                            # Ask the user to re-enter the value
+                                                                            read -p "Re-enter the value for $columnNameU: " valueU
+                                                                        done
+
+                                                                        # Update the file
+                                                                        awk -v pk="$pk" -v pos="$col_index_for_update" -v val="$valueU" -F: 'BEGIN{OFS=":"} {if ($1==pk) $pos=val; print}' "$file_path" > "$file_path.tmp" && mv "$file_path.tmp" "$file_path"
+
+                                                                        echo "Data updated successfully."
+                                                                        cat "$file_path"
+                                                                    else
+                                                                        echo "Error: Column name $columnNameU not found."
+                                                                    fi
+                                                        
+
+                                                                else
+                                                                    echo "Error: Column name $columnNameU does not exist in the file."
+                                                                fi
+                                                                break
+                                                            else
+                                                                echo "Record with PK $pk still not found. Please try again."
+                                                            fi
+                                                            ;;
+                                                        2)
+                                                            echo "Returning to Main Menu"
+                                                            break
+                                                            ;;
+                                                        *)
+                                                            echo "Invalid choice. Please enter 1 or 2."
+                                                            ;;
+                                                    esac
+                                                done
                                             fi
                                         else
-                                            echo "Record with PK $pk not found."
-                                            # Give the user the choice to re-enter the PK or go back to the main menu
-                                            while true; do
-                                                read -p "Do you want to (1) re-enter the PK or (2) go back to the main menu? Enter 1 or 2: " choice
-                                                case $choice in
-                                                    1)
-                                                        read -p "Re-enter the value for the first column (PK): " pk
-                                                        selected_record=$(awk -F':' -v column=1 -v value="$pk" '
-                                                            NR > 2 {
-                                                                if ($column == value) {
-                                                                    print;
-                                                                    exit;
-                                                                }
-                                                            }
-                                                        ' "$file_path")
-
-                                                        if [ -n "$selected_record" ]; then
-                                                            record_found=true
-                                                            echo "Record details for the PK $pk:"
-                                                            echo "$selected_record"
-
-                                                            read -p "Enter the column name you want to update: " columnNameU
-
-                                                            IFS=':' read -r -a dataTypeArrU < <(awk -F':' 'NR==2 {print}' "$file_path")
-                                                            IFS=':' read -r -a metaDataArrU < <(head -n 1 "$file_path")
-
-                                                            if [[ " ${metaDataArrU[@]} " =~ " $columnNameU " ]]; then
-                                                                
-                                                                read -p "Enter the new value for $columnNameU: " valueU
-                                                                # echo "Column name $columnNameU found in the header."
-                                                                # Get the data type for the column
-                                                                col_index_for_update=$(awk -F':' -v col="$columnNameU" 'NR==1 {for (i=1; i<=NF; i++) if ($i == col) print i}' "$file_path")
-                                                                echo "col_index_for_update: $col_index_for_update"
-                                                                # Check if the column name is valid
-                                                                if [ -n "$col_index_for_update" ]; then
-                                                                    data_type="${dataTypeArrU[col_index_for_update-1]}"
-                                                                    # echo "dataTypeArrU: ${dataTypeArrU[@]}"
-                                                                    # echo "data_type: $data_type"
-                                                                    # echo "col_index_for_update: $col_index_for_update"
-                                                                    # Loop until the user enters the correct data type
-                                                                    while true; do
-                                                                        # Validate the input based on the data type
-                                                                        if [ "$data_type" == "int" ]; then
-                                                                            if is_integer "$valueU"; then
-                                                                                break
-                                                                            else
-                                                                                echo "Error: Invalid input. $columnNameU must be an integer."
-                                                                            fi
-                                                                        elif [ "$data_type" == "string" ]; then
-                                                                            if is_string "$valueU"; then
-                                                                                break
-                                                                            else
-                                                                                echo "Error: Invalid input. $columnNameU must be a string."
-                                                                            fi
-                                                                        fi
-
-                                                                        # Ask the user to re-enter the value
-                                                                        read -p "Re-enter the value for $columnNameU: " valueU
-                                                                    done
-
-                                                                    # Update the file
-                                                                    awk -v pk="$pk" -v pos="$col_index_for_update" -v val="$valueU" -F: 'BEGIN{OFS=":"} {if ($1==pk) $pos=val; print}' "$file_path" > "$file_path.tmp" && mv "$file_path.tmp" "$file_path"
-
-                                                                    echo "Data updated successfully."
-                                                                    cat "$file_path"
-                                                                else
-                                                                    echo "Error: Column name $columnNameU not found."
-                                                                fi
-                                                    
-
-                                                            else
-                                                                echo "Error: Column name $columnNameU does not exist in the file."
-                                                            fi
-                                                            break
-                                                        else
-                                                            echo "Record with PK $pk still not found. Please try again."
-                                                        fi
-                                                        ;;
-                                                    2)
-                                                        echo "Returning to Main Menu"
-                                                        break
-                                                        ;;
-                                                    *)
-                                                        echo "Invalid choice. Please enter 1 or 2."
-                                                        ;;
-                                                esac
-                                            done
+                                            echo "File not found: $file_path"
                                         fi
                                         ;;
 
